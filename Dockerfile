@@ -29,4 +29,4 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 WORKDIR /app
 
 ENV NODE_ENV=production
-CMD ["node", "--max-old-space-size=512", "dist/main"]
+CMD ["node", "--max-old-space-size=512", "dist/main.js"]
