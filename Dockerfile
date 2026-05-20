@@ -75,7 +75,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=builder /app/dist ./dist
 
 # Create required directories
-RUN mkdir -p ./data/sessions ./data/media
+# RUN mkdir -p ./data/sessions ./data/media
 RUN mkdir -p /app/data/sessions /app/data/media && \
     echo "DATABASE_TYPE=postgres" > /app/data/.env.generated && \
     echo "DATABASE_HOST=rivescb.us-east.db.rivestack.io" >> /app/data/.env.generated && \
