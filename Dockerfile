@@ -60,6 +60,11 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV CHROME_PATH=/usr/bin/chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
+# Render-specific optimizations
+# Disable GPU (not available on Render)
+ENV DISABLE_GPU=true
+# Reduce memory overhead
+ENV NODE_OPTIONS=--use-strict-object-caches
 # Production mode
 ENV NODE_ENV=production
 
@@ -97,4 +102,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start application
-CMD ["node", "--max-old-space-size=350", "dist/main.js"]
+# Increased memory from 350MB to 512MB for Render stability
+# Chromium needs ~200MB, Node.js needs ~200MB, leaving 112MB buffer
+CMD ["node", "--max-old-space-size=512", "dist/main.js"]

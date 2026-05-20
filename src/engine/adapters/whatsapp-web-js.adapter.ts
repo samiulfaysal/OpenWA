@@ -69,15 +69,25 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     this.setStatus(EngineStatus.INITIALIZING);
 
     try {
+      // Log session initialization start
+      this.logger.log(`Initializing WhatsApp client for session: ${this.config.sessionId}`, {
+        action: 'init_start',
+        sessionId: this.config.sessionId,
+        sessionDataPath: this.config.sessionDataPath,
+      });
+
       // Build puppeteer args, including proxy if configured
-      const puppeteerArgs = this.config.puppeteer?.args || [
+      const puppeteerArgs = [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
         '--no-first-run',
         '--no-zygote',
-        '--disable-gpu',
+        // REMOVED: --single-process (causes instability on Render with memory pressure)
+        // Single-process mode is for testing only and crashes under load
+        ...(this.config.puppeteer?.args || []),
       ];
 
       // Add proxy configuration if provided
@@ -87,6 +97,10 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
           `Using proxy: ${this.config.proxy.type}://${this.config.proxy.url.replace(/:[^:@]*@/, ':***@')}`,
         );
       }
+
+      this.logger.debug('Puppeteer args', {
+        args: puppeteerArgs,
+      });
 
       this.client = new Client({
         authStrategy: new LocalAuth({
@@ -99,22 +113,37 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
 
           headless: this.config.puppeteer?.headless ?? true,
 
-          args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu",
-            "--no-first-run",
-            "--no-zygote",
-            "--single-process",
-            ...(puppeteerArgs || []),
-          ],
+          args: puppeteerArgs,
         },
       });
 
+      this.logger.debug('Client created, setting up event handlers', {
+        sessionId: this.config.sessionId,
+      });
+
       this.setupEventHandlers();
+      
+      this.logger.log('Starting client initialization (calling client.initialize())', {
+        action: 'init_client_start',
+        sessionId: this.config.sessionId,
+      });
+      
       await this.client.initialize();
+      
+      this.logger.log('Client initialization completed successfully', {
+        action: 'init_client_done',
+        sessionId: this.config.sessionId,
+      });
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : '';
+      
+      this.logger.error('Failed to initialize WhatsApp client', errorMessage, {
+        action: 'init_failed',
+        sessionId: this.config.sessionId,
+        stack: errorStack,
+      });
+      
       this.setStatus(EngineStatus.FAILED);
       throw error;
     }
@@ -129,6 +158,9 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
         this.qrCode = await qrcode.toDataURL(qr);
         this.setStatus(EngineStatus.QR_READY);
         this.callbacks.onQRCode?.(this.qrCode);
+        this.logger.debug('QR code generated successfully', {
+          action: 'qr_generated',
+        });
       } catch (error) {
         this.logger.error('Error generating QR code', String(error));
       }
@@ -137,6 +169,9 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     this.client.on('authenticated', () => {
       this.setStatus(EngineStatus.AUTHENTICATING);
       this.qrCode = null;
+      this.logger.log('Client authenticated with WhatsApp', {
+        action: 'authenticated',
+      });
     });
 
     this.client.on('ready', () => {
@@ -145,12 +180,45 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
         this.phoneNumber = info?.wid?.user || null;
         this.pushName = info?.pushname || null;
         this.setStatus(EngineStatus.READY);
+        this.logger.log(`WhatsApp client ready: ${this.phoneNumber}`, {
+          action: 'ready',
+          phone: this.phoneNumber,
+        });
         this.callbacks.onReady?.(this.phoneNumber || '', this.pushName || '');
       } catch (error) {
-        this.logger.error('Error getting client info', String(error));
+        this.logger.error('Error getting client info after ready', String(error), {
+          action: 'ready_error',
+        });
         this.setStatus(EngineStatus.READY);
         this.callbacks.onReady?.('', '');
       }
+    });
+
+    // CRITICAL: Handle errors during authentication
+    this.client.on('auth_failure', (message?: string) => {
+      this.logger.error('Authentication failed', message || 'Unknown reason', {
+        action: 'auth_failure',
+      });
+      this.setStatus(EngineStatus.FAILED);
+      this.callbacks.onDisconnected?.(`Authentication failed: ${message || 'Unknown reason'}`);
+    });
+
+    // CRITICAL: Catch unhandled errors from the client
+    this.client.on('error', (error: Error) => {
+      this.logger.error('WhatsApp client error', error.message, {
+        action: 'client_error',
+        stack: error.stack,
+      });
+      // Don't immediately set FAILED - might be recoverable
+      // But log for debugging
+    });
+
+    // Handle change_state - more detailed state changes
+    this.client.on('change_state', (state: string) => {
+      this.logger.debug(`Client state changed: ${state}`, {
+        action: 'state_change',
+        state,
+      });
     });
 
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -208,13 +276,12 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     });
 
     this.client.on('disconnected', reason => {
+      this.logger.warn(`Client disconnected: ${reason}`, {
+        action: 'disconnected',
+        reason,
+      });
       this.setStatus(EngineStatus.DISCONNECTED);
       this.callbacks.onDisconnected?.(reason);
-    });
-
-    this.client.on('auth_failure', () => {
-      this.setStatus(EngineStatus.FAILED);
-      this.callbacks.onDisconnected?.('Authentication failed');
     });
   }
 
