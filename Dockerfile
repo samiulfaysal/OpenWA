@@ -63,8 +63,6 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 # Render-specific optimizations
 # Disable GPU (not available on Render)
 ENV DISABLE_GPU=true
-# Reduce memory overhead
-ENV NODE_OPTIONS=--use-strict-object-caches
 # Production mode
 ENV NODE_ENV=production
 
