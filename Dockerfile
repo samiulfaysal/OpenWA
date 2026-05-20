@@ -97,4 +97,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start application
-CMD ["node", "--max-old-space-size=512", "dist/main.js"]
+CMD ["node", "--max-old-space-size=350", "dist/main.js"]

@@ -94,8 +94,21 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
           dataPath: path.resolve(this.config.sessionDataPath),
         }),
         puppeteer: {
+          executablePath:
+            process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium",
+
           headless: this.config.puppeteer?.headless ?? true,
-          args: puppeteerArgs,
+
+          args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--no-first-run",
+            "--no-zygote",
+            "--single-process",
+            ...(puppeteerArgs || []),
+          ],
         },
       });
 
