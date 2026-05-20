@@ -17,6 +17,8 @@ const sqliteDataSource = new DataSource({
 });
 
 // PostgreSQL configuration
+console.log('DB PASSWORD TYPE:', typeof process.env.DATABASE_PASSWORD);
+console.log('DB PASSWORD EXISTS:', !!process.env.DATABASE_PASSWORD);
 const postgresDataSource = new DataSource({
   type: 'postgres',
   host: process.env.DATABASE_HOST || 'localhost',
