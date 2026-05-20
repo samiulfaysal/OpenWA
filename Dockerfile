@@ -76,6 +76,12 @@ COPY --from=builder /app/dist ./dist
 
 # Create required directories
 RUN mkdir -p ./data/sessions ./data/media
+RUN mkdir -p /app/data/sessions /app/data/media && \
+    echo "DATABASE_TYPE=postgres" > /app/data/.env.generated && \
+    echo "DATABASE_HOST=rivescb.us-east.db.rivestack.io" >> /app/data/.env.generated && \
+    echo "DATABASE_PORT=5432" >> /app/data/.env.generated && \
+    echo "DATABASE_NAME=rv_khghvr6v" >> /app/data/.env.generated && \
+    echo "DATABASE_USERNAME=rv_khghvr6v" >> /app/data/.env.generated
 
 # Verify build exists
 RUN ls -R /app/dist
