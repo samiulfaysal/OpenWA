@@ -17,27 +17,24 @@ const sqliteDataSource = new DataSource({
 });
 
 // PostgreSQL configuration
-console.log('DB PASSWORD TYPE:', typeof process.env.DATABASE_PASSWORD);
-console.log('DB PASSWORD EXISTS:', !!process.env.DATABASE_PASSWORD);
 const postgresDataSource = new DataSource({
   type: 'postgres',
-  host: process.env.DATABASE_HOST || 'localhost',
-  port: parseInt(process.env.DATABASE_PORT || '5432', 10),
-  username: process.env.DATABASE_USERNAME,
+  host: 'rivescb.us-east.db.rivestack.io',
+  port: 5432,
+  username: 'rv_khghvr6v',
   password: process.env.DATABASE_PASSWORD,
-  database: process.env.DATABASE_NAME || 'openwa',
+  database: 'rv_khghvr6v',
+
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/migrations/*{.ts,.js}'],
-  synchronize: false, // Never auto-sync in production
-  logging: process.env.DATABASE_LOGGING === 'true',
-  ssl:
-    process.env.DATABASE_SSL === 'true'
-      ? {
-          rejectUnauthorized: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== 'false',
-        }
-      : false,
+
+  synchronize: false,
+  logging: false,
+
+  ssl: false,
+
   extra: {
-    max: parseInt(process.env.DATABASE_POOL_SIZE || '10', 10),
+    max: 10,
   },
 });
 
